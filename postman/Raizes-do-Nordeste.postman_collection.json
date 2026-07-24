@@ -1,0 +1,52 @@
+{
+  "info": { "name": "Raízes do Nordeste - API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api" },
+    { "key": "clienteToken", "value": "" },
+    { "key": "gerenteToken", "value": "" },
+    { "key": "cozinhaToken", "value": "" },
+    { "key": "pedidoId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        { "name": "T01 Login cliente válido", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 e token', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('clienteToken', pm.response.json().accessToken);"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"email\":\"cliente@raizes.com\",\"senha\":\"Cliente@123\"}" }, "url": "{{baseUrl}}/auth/login" } },
+        { "name": "T02 Login gerente válido", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('gerenteToken', pm.response.json().accessToken);"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"email\":\"gerente@raizes.com\",\"senha\":\"Cliente@123\"}" }, "url": "{{baseUrl}}/auth/login" } },
+        { "name": "T03 Login cozinha válido", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('cozinhaToken', pm.response.json().accessToken);"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"email\":\"cozinha@raizes.com\",\"senha\":\"Cliente@123\"}" }, "url": "{{baseUrl}}/auth/login" } },
+        { "name": "T04 Login inválido", "event": [{ "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] } }], "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"email\":\"cliente@raizes.com\",\"senha\":\"senha-errada\"}" }, "url": "{{baseUrl}}/auth/login" } }
+      ]
+    },
+    {
+      "name": "Catálogo e permissões",
+      "item": [
+        { "name": "T05 Consultar cardápio", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 e produtos', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().dados.length).above(0); });"] } }], "request": { "method": "GET", "url": "{{baseUrl}}/unidades/1/cardapio?page=1&limit=10" } },
+        { "name": "T06 Pedidos sem token", "event": [{ "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] } }], "request": { "method": "GET", "url": "{{baseUrl}}/pedidos" } },
+        { "name": "T07 Cliente tenta alterar estoque", "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"] } }], "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"quantidade\":10,\"motivo\":\"Teste sem permissão\"}" }, "url": "{{baseUrl}}/unidades/1/estoque/1/entrada" } }
+      ]
+    },
+    {
+      "name": "Pedidos e pagamento",
+      "item": [
+        { "name": "T08 Criar pedido aprovado", "event": [{ "listen": "test", "script": { "exec": ["pm.test('201 e RECEBIDO', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().status).eql('RECEBIDO'); });", "pm.collectionVariables.set('pedidoId', pm.response.json().id);"] } }], "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"unidadeId\":1,\"canalPedido\":\"APP\",\"itens\":[{\"produtoId\":1,\"quantidade\":2}],\"aprovarPagamento\":true}" }, "url": "{{baseUrl}}/pedidos" } },
+        { "name": "T09 Criar pedido sem canal", "event": [{ "listen": "test", "script": { "exec": ["pm.test('400', () => pm.response.to.have.status(400));"] } }], "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"unidadeId\":1,\"itens\":[{\"produtoId\":1,\"quantidade\":1}]}" }, "url": "{{baseUrl}}/pedidos" } },
+        { "name": "T10 Produto inexistente", "event": [{ "listen": "test", "script": { "exec": ["pm.test('404', () => pm.response.to.have.status(404));"] } }], "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"unidadeId\":1,\"canalPedido\":\"TOTEM\",\"itens\":[{\"produtoId\":9999,\"quantidade\":1}]}" }, "url": "{{baseUrl}}/pedidos" } },
+        { "name": "T11 Estoque insuficiente", "event": [{ "listen": "test", "script": { "exec": ["pm.test('409', () => pm.response.to.have.status(409));"] } }], "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"unidadeId\":1,\"canalPedido\":\"WEB\",\"itens\":[{\"produtoId\":1,\"quantidade\":99999}]}" }, "url": "{{baseUrl}}/pedidos" } },
+        { "name": "T12 Pagamento recusado", "event": [{ "listen": "test", "script": { "exec": ["pm.test('201 e recusado', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().status).eql('PAGAMENTO_RECUSADO'); });"] } }], "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"unidadeId\":1,\"canalPedido\":\"PICKUP\",\"itens\":[{\"produtoId\":2,\"quantidade\":1}],\"aprovarPagamento\":false}" }, "url": "{{baseUrl}}/pedidos" } },
+        { "name": "T13 Atualizar para EM_PREPARO", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 e EM_PREPARO', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).eql('EM_PREPARO'); });"] } }], "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{cozinhaToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"status\":\"EM_PREPARO\"}" }, "url": "{{baseUrl}}/pedidos/{{pedidoId}}/status" } },
+        { "name": "T14 Consultar auditoria", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 e registros', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().length).above(0); });"] } }], "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{gerenteToken}}" }], "url": "{{baseUrl}}/pedidos/{{pedidoId}}/auditoria" } }
+      ]
+    },
+    {
+      "name": "Escopo completo",
+      "item": [
+        { "name": "T15 Consultar saldo de pontos", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 e saldo', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.have.property('pontos'); });"] } }], "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }], "url": "{{baseUrl}}/fidelidade/saldo" } },
+        { "name": "T16 Listar promoções", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }], "request": { "method": "GET", "url": "{{baseUrl}}/promocoes?unidadeId=1&produtoId=1" } },
+        { "name": "T17 Exportar dados LGPD", "event": [{ "listen": "test", "script": { "exec": ["pm.test('não expõe senha', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).not.to.have.property('senhaHash'); });"] } }], "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }], "url": "{{baseUrl}}/lgpd/meus-dados" } },
+        { "name": "T18 Criar produto como gerente", "event": [{ "listen": "test", "script": { "exec": ["pm.test('201', () => pm.response.to.have.status(201));"] } }], "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{gerenteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"nome\":\"Bolo de macaxeira Postman\",\"descricao\":\"Produto de evidência\",\"preco\":12.90}" }, "url": "{{baseUrl}}/admin/produtos" } },
+        { "name": "T19 Revogar consentimento", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 e revogado', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().consentimentoLgpd).eql(false); });"] } }], "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"concedido\":false,\"finalidade\":\"Programa de fidelização e ofertas personalizadas\"}" }, "url": "{{baseUrl}}/lgpd/consentimento" } },
+        { "name": "T20 Reativar consentimento", "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 e concedido', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().consentimentoLgpd).eql(true); });"] } }], "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{clienteToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"concedido\":true,\"finalidade\":\"Programa de fidelização e ofertas personalizadas\"}" }, "url": "{{baseUrl}}/lgpd/consentimento" } }
+      ]
+    }
+  ]
+}
