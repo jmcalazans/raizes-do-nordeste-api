@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENTE
+  ATENDENTE
+  COZINHA
+  GERENTE
+  ADMIN
+}
+
+enum CanalPedido {
+  APP
+  TOTEM
+  BALCAO
+  PICKUP
+  WEB
+}
+
+enum PedidoStatus {
+  AGUARDANDO_PAGAMENTO
+  PAGAMENTO_RECUSADO
+  RECEBIDO
+  EM_PREPARO
+  PRONTO
+  ENTREGUE
+  CANCELADO
+}
+
+enum PagamentoStatus {
+  PENDENTE
+  APROVADO
+  RECUSADO
+}
+
+enum TipoMovimento {
+  ENTRADA
+  SAIDA
+  AJUSTE
+}
+
+enum TipoPontos {
+  CREDITO
+  RESGATE
+  ESTORNO
+}
+
+model Usuario {
+  id                  Int         @id @default(autoincrement())
+  nome                String
+  email               String      @unique
+  senhaHash           String
+  role                Role        @default(CLIENTE)
+  consentimentoLgpd   Boolean     @default(false)
+  consentimentoEm     DateTime?
+  criadoEm            DateTime    @default(now())
+  atualizadoEm        DateTime    @updatedAt
+  pedidos             Pedido[]
+  auditorias          Auditoria[]
+  pontos              Int         @default(0)
+  movimentosPontos    MovimentoPontos[]
+  consentimentos      ConsentimentoLgpd[]
+}
+
+model Unidade {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  cidade      String
+  uf          String
+  ativa       Boolean   @default(true)
+  criadoEm    DateTime  @default(now())
+  estoques    Estoque[]
+  pedidos     Pedido[]
+  promocoes   Promocao[]
+}
+
+model Produto {
+  id          Int          @id @default(autoincrement())
+  nome        String
+  descricao   String?
+  preco       Decimal
+  ativo       Boolean      @default(true)
+  criadoEm    DateTime     @default(now())
+  estoques    Estoque[]
+  itens       ItemPedido[]
+  promocoes   Promocao[]
+}
+
+model Estoque {
+  id          Int                 @id @default(autoincrement())
+  unidadeId   Int
+  produtoId   Int
+  quantidade  Int                 @default(0)
+  atualizadoEm DateTime           @updatedAt
+  unidade     Unidade             @relation(fields: [unidadeId], references: [id])
+  produto     Produto             @relation(fields: [produtoId], references: [id])
+  movimentos  MovimentoEstoque[]
+
+  @@unique([unidadeId, produtoId])
+}
+
+model MovimentoEstoque {
+  id          Int            @id @default(autoincrement())
+  estoqueId   Int
+  tipo        TipoMovimento
+  quantidade  Int
+  motivo      String
+  criadoEm    DateTime       @default(now())
+  estoque     Estoque        @relation(fields: [estoqueId], references: [id])
+}
+
+model Pedido {
+  id          Int            @id @default(autoincrement())
+  clienteId   Int
+  unidadeId   Int
+  canalPedido CanalPedido
+  status      PedidoStatus   @default(AGUARDANDO_PAGAMENTO)
+  total       Decimal
+  criadoEm    DateTime       @default(now())
+  atualizadoEm DateTime      @updatedAt
+  cliente     Usuario        @relation(fields: [clienteId], references: [id])
+  unidade     Unidade        @relation(fields: [unidadeId], references: [id])
+  itens       ItemPedido[]
+  pagamento   Pagamento?
+  pontosGerados Int          @default(0)
+  pontosResgatados Int       @default(0)
+  desconto    Decimal        @default(0)
+  movimentosPontos MovimentoPontos[]
+}
+
+model ItemPedido {
+  id            Int       @id @default(autoincrement())
+  pedidoId      Int
+  produtoId     Int
+  quantidade    Int
+  precoUnitario Decimal
+  subtotal      Decimal
+  pedido        Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto       Produto   @relation(fields: [produtoId], references: [id])
+}
+
+model Pagamento {
+  id            Int              @id @default(autoincrement())
+  pedidoId      Int              @unique
+  status        PagamentoStatus  @default(PENDENTE)
+  transacaoId   String           @unique
+  motivoRecusa  String?
+  payload       String
+  processadoEm  DateTime         @default(now())
+  pedido        Pedido           @relation(fields: [pedidoId], references: [id])
+}
+
+model Auditoria {
+  id          Int       @id @default(autoincrement())
+  usuarioId   Int?
+  acao        String
+  recurso     String
+  recursoId   String?
+  detalhes    String?
+  criadoEm    DateTime  @default(now())
+  usuario     Usuario?  @relation(fields: [usuarioId], references: [id])
+}
+
+model Promocao {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  descricao   String?
+  percentual  Int
+  inicio      DateTime
+  fim         DateTime
+  ativa       Boolean   @default(true)
+  unidadeId   Int?
+  produtoId   Int?
+  unidade     Unidade?  @relation(fields: [unidadeId], references: [id])
+  produto     Produto?  @relation(fields: [produtoId], references: [id])
+  criadoEm    DateTime  @default(now())
+}
+
+model MovimentoPontos {
+  id          Int         @id @default(autoincrement())
+  usuarioId   Int
+  pedidoId    Int?
+  tipo        TipoPontos
+  pontos      Int
+  descricao   String
+  criadoEm    DateTime    @default(now())
+  usuario     Usuario     @relation(fields: [usuarioId], references: [id])
+  pedido      Pedido?     @relation(fields: [pedidoId], references: [id])
+}
+
+model ConsentimentoLgpd {
+  id          Int       @id @default(autoincrement())
+  usuarioId   Int
+  finalidade  String
+  concedido   Boolean
+  registradoEm DateTime @default(now())
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+}
