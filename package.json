@@ -55,5 +55,8 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "js-yaml": "5.2.3"
   }
 }
