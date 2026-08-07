@@ -72,5 +72,3 @@ Dados mínimos coletados: nome, e-mail, hash de senha e registro de consentiment
 
 Importe `postman/Raizes-do-Nordeste.postman_collection.json` e execute as requisições na ordem numérica. A coleção mantém tokens e o último `pedidoId` em variáveis. Ela cobre cenários positivos e negativos de autenticação, autorização, validação, pedido, pagamento, cancelamento, fidelidade, promoções, administração, LGPD e auditoria. Além disso, `npm test` executa 16 testes automatizados de integração.
 
-Os diagramas em Mermaid estão em `docs/diagramas.md`; podem ser exportados como PNG/PDF. O DER implementado também pode ser conferido em `prisma/schema.prisma` e na migration.
-
